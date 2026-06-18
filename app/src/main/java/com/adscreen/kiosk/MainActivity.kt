@@ -9,7 +9,6 @@ import android.graphics.PixelFormat
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
@@ -105,9 +104,14 @@ class MainActivity : AppCompatActivity() {
             // Fallback: dismiss the pin‑confirmation dialog in case the
             // whitelist didn't take (some custom ROMs ignore dpm).
             delay(300)
+            // Blank the WebView so no input tap can hit page content
+            binding.webview.stopLoading()
+            binding.webview.loadUrl("about:blank")
+            delay(500)
             val w = resources.displayMetrics.widthPixels
             val h = resources.displayMetrics.heightPixels
             rootManager.dismissPinningDialog(w, h)
+            binding.webview.loadUrl(currentUrl)
 
             unlockWithOverlay()
         }
@@ -198,9 +202,13 @@ class MainActivity : AppCompatActivity() {
                 lockWithOverlay()
                 startLockTask()
                 delay(300)
+                binding.webview.stopLoading()
+                binding.webview.loadUrl("about:blank")
+                delay(500)
                 val w = resources.displayMetrics.widthPixels
                 val h = resources.displayMetrics.heightPixels
                 rootManager.dismissPinningDialog(w, h)
+                binding.webview.loadUrl(currentUrl)
                 unlockWithOverlay()
             }
         }
@@ -289,7 +297,27 @@ class MainActivity : AppCompatActivity() {
                 view: WebView?,
                 request: WebResourceRequest?
             ): Boolean {
-                // Allow all navigation within the WebView
+                val url = request?.url ?: return true
+                val scheme = url.scheme
+                // Block any non-http(s) navigation silently
+                if (scheme != "http" && scheme != "https") {
+                    Log.w(TAG, "Blocked non-http navigation: $url")
+                    return true
+                }
+                return false
+            }
+
+            @Suppress("DEPRECATION")
+            override fun shouldOverrideUrlLoading(
+                view: WebView?,
+                url: String?
+            ): Boolean {
+                if (url == null) return true
+                val scheme = android.net.Uri.parse(url).scheme
+                if (scheme != "http" && scheme != "https") {
+                    Log.w(TAG, "Blocked non-http navigation: $url")
+                    return true
+                }
                 return false
             }
         }
@@ -341,8 +369,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun showRootRequired() {
         AlertDialog.Builder(this)
-            .setTitle("需要 Root 权限")
-            .setMessage("本应用需要 Root 权限来启用全屏锁定模式。\n\n请确保设备已获取 Root 权限，并允许本应用的 Root 请求。")
+            .setTitle("权限不足")
+            .setMessage("本应用需要 Root 权限或 Device Owner 权限来启用全屏锁定模式。\n\n请确保设备已 Root 并允许授权，或通过 ADB 设置为 Device Owner：\n\ndpm set-device-owner com.adscreen.kiosk/.manager.DeviceAdminReceiverImpl")
             .setCancelable(false)
             .setPositiveButton("退出") { _, _ -> finishAffinity() }
             .show()
@@ -359,27 +387,24 @@ class MainActivity : AppCompatActivity() {
         binding.touchOverlay.bringToFront()
         binding.webview.setOnTouchListener { _, _ -> true }
 
-        // System overlay: only cover bottom ~25% where "不用了" sits,
-        // so auto-tap at centre (50%,50%‑60%) reaches confirm button.
+        // Full-screen system overlay above all app content.
+        // Without FLAG_NOT_TOUCH_MODAL the overlay captures every user
+        // touch, preventing the lock-task confirmation's "取消" button
+        // from being tapped — only our root-injected input tap reaches
+        // the dialog to confirm.
         val wm = getSystemService(WINDOW_SERVICE) as WindowManager
-        val display = wm.defaultDisplay
-        val metrics = android.util.DisplayMetrics()
-        display.getRealMetrics(metrics)
-        val height = (metrics.heightPixels * 0.35).toInt()
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
-            height,
+            WindowManager.LayoutParams.MATCH_PARENT,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else
                 WindowManager.LayoutParams.TYPE_PHONE,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                    or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
                     or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
                     or WindowManager.LayoutParams.FLAG_FULLSCREEN,
             PixelFormat.TRANSLUCENT
         )
-        params.gravity = Gravity.BOTTOM
         val overlay = View(this)
         overlay.setBackgroundColor(0x00000000)
         overlay.setOnTouchListener { _, _ -> true }
@@ -387,7 +412,7 @@ class MainActivity : AppCompatActivity() {
         try {
             wm.addView(overlay, params)
         } catch (e: Exception) {
-            Log.w(TAG, "System overlay not available", e)
+            Log.w(TAG, "Full-screen overlay not available", e)
         }
     }
 

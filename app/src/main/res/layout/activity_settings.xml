@@ -266,30 +266,7 @@
             android:layout_marginVertical="24dp"
             android:background="@color/exit_button_bg" />
 
-        <!-- Uninstall protection -->
-        <TextView
-            style="@style/TextAppearance.Material3.TitleSmall"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:text="卸载保护"
-            android:textColor="@color/secondary" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_uninstall"
-            style="@style/Widget.Material3.Button.TonalButton"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:text="移除保护并卸载应用"
-            android:textColor="@color/error"
-            android:textSize="14sp" />
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginVertical="16dp"
-            android:background="@color/exit_button_bg" />
-
+        <!-- ===== 退出Kiosk Section ===== -->
         <TextView
             style="@style/TextAppearance.Material3.TitleSmall"
             android:layout_width="match_parent"

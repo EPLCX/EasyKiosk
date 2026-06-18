@@ -91,13 +91,15 @@ class RootManager(private val context: Context) {
 
     /**
      * Restore navigation bar to default behavior.
+     * Tries both the empty-string assignment and the delete command
+     * for maximum ROM compatibility.
      */
     suspend fun restoreNavigationBar(): Boolean {
-        val result = execRoot(Constants.ROOT_CMD_RESTORE_NAV_BAR)
-        if (!result.isSuccess) {
-            Log.e(TAG, "Failed to restore nav bar: ${result.err}")
-        }
-        return result.isSuccess
+        var ok = execRoot(Constants.ROOT_CMD_RESTORE_NAV_BAR).isSuccess
+        if (!ok) Log.w(TAG, "nav bar: put \"\" failed, trying delete…")
+        ok = execRoot(Constants.ROOT_CMD_DELETE_POLICY_CONTROL).isSuccess || ok
+        if (!ok) Log.e(TAG, "Failed to restore nav bar (both methods)")
+        return ok
     }
 
     /**
@@ -125,7 +127,7 @@ class RootManager(private val context: Context) {
                 Log.i(TAG, "Disabled launcher: $pkg")
             } else {
                 allSuccess = false
-                Log.d(TAG, "Could not disable $pkg (may not exist): ${result.err}")
+                Log.w(TAG, "Failed to disable launcher $pkg: ${result.err}")
             }
         }
         return allSuccess
@@ -140,9 +142,11 @@ class RootManager(private val context: Context) {
         for (pkg in launchers) {
             val cmd = Constants.ROOT_CMD_ENABLE_LAUNCHER.format(pkg)
             val result = execRoot(cmd)
-            if (!result.isSuccess) {
+            if (result.isSuccess) {
+                Log.i(TAG, "Enabled launcher: $pkg")
+            } else {
                 allSuccess = false
-                Log.d(TAG, "Could not enable $pkg: ${result.err}")
+                Log.w(TAG, "Failed to enable launcher $pkg: ${result.err}")
             }
         }
         return allSuccess
@@ -162,30 +166,74 @@ class RootManager(private val context: Context) {
     /**
      * Enable screen pinning in system settings and whitelist our app
      * so startLockTask() can be used without a device admin prompt.
+     *
+     * Uses two strategies:
+     *  1. Device Owner (DPM API) — no root needed, preferred when available.
+     *  2. Root shell fallback — via su and dpm/pm commands.
      */
     suspend fun enableScreenPinning(): Boolean {
-        execRoot(Constants.ROOT_CMD_ENABLE_PINNING)
+        val securityManager = SecurityManager(context)
 
-        // Force activate device admin, then whitelist ourselves
+        if (securityManager.isDeviceOwner()) {
+            Log.i(TAG, "Device Owner detected — using DPM API for lock-task")
+            val pkgOk = securityManager.setLockTaskPackages(context.packageName)
+            if (pkgOk) {
+                Log.i(TAG, "Lock-task packages whitelisted via DPM")
+                return true
+            }
+            Log.w(TAG, "DPM path failed (packages=$pkgOk), falling back to root")
+        } else {
+            Log.i(TAG, "Not device owner — using root for lock-task setup")
+        }
+
+        // Root fallback path
+        execRoot(Constants.ROOT_CMD_ENABLE_PINNING)
         setActiveAdmin()
         val result = execRoot(Constants.ROOT_CMD_LOCK_TASK_PACKAGES.format(context.packageName))
         if (!result.isSuccess) {
-            Log.w(TAG, "set-lock-task-packages failed: ${result.err}")
+            Log.w(TAG, "Root fallback: set-lock-task-packages failed: ${result.err}")
         }
         return result.isSuccess
     }
 
     /**
      * Dismiss the screen-pinning confirmation dialog by tapping where
-     * the "OK" / "开始" / "GOT IT" button appears.
+     * the "OK" / "开始" / "GOT IT" button is expected.
+     *
+     * Tries a grid of positions across the dialog area instead of a single
+     * fixed coordinate, because button placement varies by ROM and screen
+     * resolution. Falls back to KEYCODE_ENTER if taps don't work.
      */
     suspend fun dismissPinningDialog(width: Int, height: Int) {
-        // Tap slightly below centre where the confirm button usually sits
-        val cmdCentre = Constants.ROOT_CMD_DISMISS_PINNING_DIALOG.format(width / 2, height / 2)
-        val cmdLow = Constants.ROOT_CMD_DISMISS_PINNING_DIALOG.format(width / 2, (height * 0.6).toInt())
-        execRoot(cmdCentre)
-        kotlinx.coroutines.delay(200)
-        execRoot(cmdLow)
+        // Build a list of candidate tap positions covering the area
+        // where the confirm button typically appears across various ROMs
+        val taps = mutableListOf<Pair<Int, Int>>()
+
+        // Center row (most ROMs: confirm button at ~45-50% from top)
+        for (xFraction in listOf(0.40, 0.50, 0.60)) {
+            taps.add((width * xFraction).toInt() to (height * 0.48).toInt())
+        }
+
+        // Middle-lower row (some ROMs: button slightly lower)
+        for (xFraction in listOf(0.40, 0.50, 0.60)) {
+            taps.add((width * xFraction).toInt() to (height * 0.55).toInt())
+        }
+
+        // Lower row (fallback: some ROMs put it near the bottom)
+        for (xFraction in listOf(0.45, 0.50, 0.55)) {
+            taps.add((width * xFraction).toInt() to (height * 0.62).toInt())
+        }
+
+        // Try all tap positions with short delays
+        for ((x, y) in taps) {
+            execRoot(Constants.ROOT_CMD_DISMISS_PINNING_DIALOG.format(x, y))
+            kotlinx.coroutines.delay(150)
+        }
+
+        // Last resort: send enter key event (works on some AOSP-based ROMs)
+        execRoot("input keyevent KEYCODE_ENTER")
+        kotlinx.coroutines.delay(100)
+        execRoot("input keyevent KEYCODE_DPAD_CENTER")
     }
 
     /**
@@ -201,34 +249,53 @@ class RootManager(private val context: Context) {
 
     /**
      * Execute all elevated setup operations.
+     *
+     * Uses two privilege paths:
+     *  - **Device Owner** (DPM API): enables lock-task without root.
+     *  - **Root shell** (su): for policy_control (global immersive), renice,
+     *    and launcher freeze.
+     *
+     * When root is unavailable but device-owner is set, lock-task still works
+     * but global system UI hiding (policy_control) is skipped — the app still
+     * enforces immersive via Activity-level WindowInsetsController flags.
      */
     suspend fun performElevatedSetup(): Boolean {
-        if (!ensureRoot()) {
-            Log.e(TAG, "Root required but not available — kiosk cannot enforce")
+        val securityManager = SecurityManager(context)
+        val isDevOwner = securityManager.isDeviceOwner()
+        val hasRoot = ensureRoot()
+
+        if (!hasRoot && !isDevOwner) {
+            Log.e(TAG, "Neither root nor device-owner available — kiosk cannot enforce")
             return false
         }
 
-        Log.i(TAG, "Starting elevated setup, root shell acquired…")
+        Log.i(TAG, "Starting elevated setup (root=$hasRoot, deviceOwner=$isDevOwner)…")
 
-        // Always restore launchers first (clean up from previous crash)
-        enableLaunchers()
+        // Always restore launchers first (clean up from previous crash) — needs root
+        if (hasRoot) enableLaunchers()
 
-        // Fullscreen mode
-        forceImmersiveMode()
-        hardenSystemUi()
-        raiseProcessPriority()
+        // Fullscreen mode — policy_control requires root
+        if (hasRoot) {
+            forceImmersiveMode()
+            hardenSystemUi()
+            raiseProcessPriority()
+        } else {
+            Log.i(TAG, "No root, skipping global immersive — using Activity-level only")
+        }
 
-        // Enable screen pinning (for startLockTask)
+        // Screen pinning / lock-task — prefers DPM, falls back to root
         enableScreenPinning()
 
-        // Freeze launcher (default enabled in settings)
-        val prefs = context.getSharedPreferences(Constants.PREFS_NAME, Context.MODE_PRIVATE)
-        val freezeLauncher = prefs.getBoolean(Constants.KEY_FREEZE_LAUNCHER, true)
-        if (freezeLauncher) {
-            Log.i(TAG, "Freezing launchers")
-            disableLaunchers()
-        } else {
-            Log.i(TAG, "Skipping launcher freeze")
+        // Freeze launcher (default enabled in settings) — needs root
+        if (hasRoot) {
+            val prefs = context.getSharedPreferences(Constants.PREFS_NAME, Context.MODE_PRIVATE)
+            val freezeLauncher = prefs.getBoolean(Constants.KEY_FREEZE_LAUNCHER, true)
+            if (freezeLauncher) {
+                Log.i(TAG, "Freezing launchers")
+                disableLaunchers()
+            } else {
+                Log.i(TAG, "Skipping launcher freeze")
+            }
         }
 
         Log.i(TAG, "Elevated setup complete")
@@ -255,9 +322,25 @@ class RootManager(private val context: Context) {
 
         Log.i(TAG, "Starting elevated cleanup…")
 
-        restoreNavigationBar()
-        enableLaunchers()
-        execRoot(Constants.ROOT_CMD_START_LAUNCHER)
+        // Restore nav bar — retry once on failure
+        if (!restoreNavigationBar()) {
+            Log.w(TAG, "nav bar restore failed on first attempt, retrying…")
+            kotlinx.coroutines.delay(500)
+            restoreNavigationBar()
+        }
+
+        if (!enableLaunchers()) {
+            Log.w(TAG, "some launchers could not be re-enabled")
+        }
+
+        // Re-enable SystemUI in case it was disabled by external tools
+        execRoot(Constants.ROOT_CMD_ENABLE_SYSTEMUI)
+            .let { if (!it.isSuccess) Log.w(TAG, "enable SystemUI: ${it.err}") }
+
+        val startResult = execRoot(Constants.ROOT_CMD_START_LAUNCHER)
+        if (!startResult.isSuccess) {
+            Log.e(TAG, "failed to launch home: ${startResult.err}")
+        }
 
         Log.i(TAG, "Elevated cleanup complete")
     }

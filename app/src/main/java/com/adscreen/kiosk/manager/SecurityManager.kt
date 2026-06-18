@@ -106,4 +106,32 @@ class SecurityManager(private val context: Context) {
             }
         }
     }
+
+    /**
+     * Check if the app is Device Owner (the most privileged DPM role).
+     * When device-owner is set, lock-task can be configured via the DPM
+     * API directly without root shell access.
+     */
+    fun isDeviceOwner(): Boolean {
+        return try {
+            devicePolicyManager.isDeviceOwnerApp(context.packageName)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to check device owner", e)
+            false
+        }
+    }
+
+    /**
+     * Whitelist packages for lock-task via the DPM API (requires device-owner).
+     */
+    fun setLockTaskPackages(vararg packages: String): Boolean {
+        return try {
+            devicePolicyManager.setLockTaskPackages(adminComponent, packages)
+            Log.i(TAG, "Lock task packages set via DPM: ${packages.joinToString()}")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to set lock task packages via DPM", e)
+            false
+        }
+    }
 }

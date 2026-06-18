@@ -1,7 +1,6 @@
 package com.adscreen.kiosk
 
 import android.content.Context
-import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.MotionEvent
@@ -15,10 +14,7 @@ import com.adscreen.kiosk.exit.ExitDialogFragment
 import com.adscreen.kiosk.manager.RootManager
 import com.adscreen.kiosk.util.Constants
 import com.adscreen.kiosk.util.CryptoUtil
-import com.topjohnwu.superuser.Shell
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -40,7 +36,6 @@ class SettingsActivity : AppCompatActivity() {
     private fun setupListeners() {
         binding.btnBack.setOnClickListener { finish() }
         binding.btnSave.setOnClickListener { saveSettings() }
-        binding.btnUninstall.setOnClickListener { confirmUninstall() }
         binding.btnExitKiosk.setOnClickListener { showExitDialog() }
     }
 
@@ -121,36 +116,6 @@ class SettingsActivity : AppCompatActivity() {
         setResult(RESULT_OK)
         Toast.makeText(this, "设置已保存", Toast.LENGTH_SHORT).show()
         finish()
-    }
-
-    private fun confirmUninstall() {
-        val dialog = ExitDialogFragment()
-            .setTitle("移除保护并卸载")
-            .setHint("请输入管理员密码以确认卸载")
-            .setConfirmButtonText("确定卸载")
-            .setOnExitConfirmed {
-                lifecycleScope.launch { doUninstall() }
-            }
-        dialog.show(supportFragmentManager, "UninstallConfirmDialog")
-    }
-
-    private suspend fun doUninstall() {
-        withContext(Dispatchers.IO) {
-            // Remove device admin
-            Shell.cmd(Constants.ROOT_CMD_REMOVE_ACTIVE_ADMIN).exec()
-            // Re-enable launchers
-            val launchers = Constants.LAUNCHER_PACKAGES.split(":")
-            for (pkg in launchers) {
-                Shell.cmd(Constants.ROOT_CMD_ENABLE_LAUNCHER.format(pkg)).exec()
-            }
-        }
-
-        // Uninstall ourselves
-        val intent = Intent(Intent.ACTION_DELETE).apply {
-            data = android.net.Uri.parse("package:${packageName}")
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        }
-        startActivity(intent)
     }
 
     private fun showExitDialog() {

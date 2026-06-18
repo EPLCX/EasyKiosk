@@ -4,7 +4,6 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
-import android.os.Debug
 import android.util.Log
 import com.topjohnwu.superuser.Shell
 import java.io.File
@@ -35,11 +34,11 @@ class KioskApp : Application() {
                 }
                 Log.e(TAG, "Crash logged to ${file.absolutePath}", throwable)
 
-                // Restore launchers before dying — best-effort root
+                // Restore launchers before dying — use libsu like the rest of the app
                 val launchers = com.adscreen.kiosk.util.Constants.LAUNCHER_PACKAGES.split(":")
                 for (pkg in launchers) {
                     try {
-                        Runtime.getRuntime().exec("su -c pm enable $pkg")
+                        Shell.cmd("pm enable $pkg").exec()
                     } catch (_: Exception) {}
                 }
             } catch (_: Exception) {
