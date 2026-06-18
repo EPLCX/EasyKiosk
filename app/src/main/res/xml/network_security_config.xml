@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Permit cleartext so user-configured HTTP URLs still load as main frames.
+         Mixed content (HTTP subresources on HTTPS pages) is blocked at the
+         WebView level via MIXED_CONTENT_NEVER_ALLOW. -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

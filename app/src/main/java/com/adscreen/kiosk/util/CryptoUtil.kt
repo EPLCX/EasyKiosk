@@ -7,6 +7,7 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import java.security.KeyStore
+import java.security.MessageDigest
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -129,11 +130,16 @@ class CryptoUtil(context: Context) {
 
     fun verifyPassword(input: String): Boolean {
         val stored = prefs.getString(KEY_PASSWORD, null) ?: return false
-        if (stored.length == 6 && stored.all { it.isDigit() }) {
-            // Plaintext fallback
-            return stored == input
+        val expected = if (stored.length == 6 && stored.all { it.isDigit() }) {
+            stored
+        } else {
+            decrypt(stored) ?: return false
         }
-        return decrypt(stored) == input
+        // Constant-time comparison to mitigate timing side-channel
+        return MessageDigest.isEqual(
+            expected.toByteArray(Charsets.UTF_8),
+            input.toByteArray(Charsets.UTF_8)
+        )
     }
 
     fun clearAll() {

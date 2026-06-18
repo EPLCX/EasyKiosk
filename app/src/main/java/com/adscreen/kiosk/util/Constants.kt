@@ -3,10 +3,6 @@ package com.adscreen.kiosk.util
 object Constants {
     const val PREFS_NAME = "kiosk_prefs"
     const val KEY_IS_FIRST_RUN = "is_first_run"
-    const val KEY_ENCRYPTED_PASSWORD = "encrypted_password"
-    const val KEY_ENCRYPTED_URL = "encrypted_url"
-    const val KEY_PASSWORD_SALT = "password_salt"
-    const val KEY_URL_SALT = "url_salt"
     const val DEFAULT_URL = "https://www.example.com"
     const val PASSWORD_LENGTH = 6
 

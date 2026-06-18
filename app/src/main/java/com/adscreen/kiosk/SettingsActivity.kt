@@ -8,7 +8,6 @@ import android.view.MotionEvent
 import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.adscreen.kiosk.databinding.ActivitySettingsBinding
@@ -125,36 +124,33 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun confirmUninstall() {
-        AlertDialog.Builder(this)
+        val dialog = ExitDialogFragment()
             .setTitle("移除保护并卸载")
-            .setMessage("将移除设备管理员身份、恢复系统桌面并卸载本应用。\n\n确定要继续吗？")
-            .setCancelable(false)
-            .setPositiveButton("确定卸载") { _, _ -> doUninstall() }
-            .setNegativeButton("取消", null)
-            .show()
+            .setHint("请输入管理员密码以确认卸载")
+            .setConfirmButtonText("确定卸载")
+            .setOnExitConfirmed {
+                lifecycleScope.launch { doUninstall() }
+            }
+        dialog.show(supportFragmentManager, "UninstallConfirmDialog")
     }
 
-    private fun doUninstall() {
-        lifecycleScope.launch {
-            Toast.makeText(this@SettingsActivity, "正在移除保护…", Toast.LENGTH_SHORT).show()
-
-            withContext(Dispatchers.IO) {
-                // Remove device admin
-                Shell.cmd(Constants.ROOT_CMD_REMOVE_ACTIVE_ADMIN).exec()
-                // Re-enable launchers
-                val launchers = Constants.LAUNCHER_PACKAGES.split(":")
-                for (pkg in launchers) {
-                    Shell.cmd(Constants.ROOT_CMD_ENABLE_LAUNCHER.format(pkg)).exec()
-                }
+    private suspend fun doUninstall() {
+        withContext(Dispatchers.IO) {
+            // Remove device admin
+            Shell.cmd(Constants.ROOT_CMD_REMOVE_ACTIVE_ADMIN).exec()
+            // Re-enable launchers
+            val launchers = Constants.LAUNCHER_PACKAGES.split(":")
+            for (pkg in launchers) {
+                Shell.cmd(Constants.ROOT_CMD_ENABLE_LAUNCHER.format(pkg)).exec()
             }
-
-            // Uninstall ourselves
-            val intent = Intent(Intent.ACTION_DELETE).apply {
-                data = android.net.Uri.parse("package:${packageName}")
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }
-            startActivity(intent)
         }
+
+        // Uninstall ourselves
+        val intent = Intent(Intent.ACTION_DELETE).apply {
+            data = android.net.Uri.parse("package:${packageName}")
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        startActivity(intent)
     }
 
     private fun showExitDialog() {

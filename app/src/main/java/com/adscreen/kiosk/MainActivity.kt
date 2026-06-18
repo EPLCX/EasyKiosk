@@ -54,6 +54,20 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Reject callers that are not our own app, system, shell, or root.
+        // This prevents third-party apps on the same device from launching
+        // MainActivity to interfere with kiosk mode (e.g. break lock-task).
+        val callerUid = android.os.Process.myUid()
+        val callingUid = getLaunchedFromUid()
+        if (callingUid != null && callingUid != callerUid
+            && callingUid != android.os.Process.ROOT_UID
+            && callingUid != android.os.Process.SYSTEM_UID
+            && callingUid != android.os.Process.SHELL_UID) {
+            Log.w(TAG, "Rejected launch from untrusted UID: $callingUid")
+            finish()
+            return
+        }
+
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -76,6 +90,9 @@ class MainActivity : AppCompatActivity() {
 
         // Root enforcement (lifecycle-aware, auto-cancelled on destroy).
         lifecycleScope.launch {
+            // Obtain root shell immediately at startup, before any setup
+            rootManager.ensureRoot()
+
             if (!rootManager.performElevatedSetup()) {
                 showRootRequired()
                 return@launch
@@ -224,8 +241,8 @@ class MainActivity : AppCompatActivity() {
             allowFileAccess = false
             allowContentAccess = false
 
-            // Mixed content
-            mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+            // Block mixed content: HTTPS pages must not load HTTP subresources
+            mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
 
             // Performance
             setRenderPriority(android.webkit.WebSettings.RenderPriority.HIGH)
@@ -387,23 +404,4 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun performSafeExit() {
-        isExiting = true
-
-        // 1. Exit lock task mode
-        try {
-            stopLockTask()
-        } catch (_: Exception) {}
-
-        // 2. Restore system UI via root
-        lifecycleScope.launch {
-            rootManager.performElevatedCleanup()
-        }
-
-        // 3. Clear secure flag so screenshots work after exit
-        kioskManager.disableSecureFlag()
-
-        // 4. Finish with affinity
-        finishAffinity()
-    }
 }

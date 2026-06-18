@@ -124,6 +124,7 @@ class RootManager(private val context: Context) {
             if (result.isSuccess) {
                 Log.i(TAG, "Disabled launcher: $pkg")
             } else {
+                allSuccess = false
                 Log.d(TAG, "Could not disable $pkg (may not exist): ${result.err}")
             }
         }
@@ -140,6 +141,7 @@ class RootManager(private val context: Context) {
             val cmd = Constants.ROOT_CMD_ENABLE_LAUNCHER.format(pkg)
             val result = execRoot(cmd)
             if (!result.isSuccess) {
+                allSuccess = false
                 Log.d(TAG, "Could not enable $pkg: ${result.err}")
             }
         }
