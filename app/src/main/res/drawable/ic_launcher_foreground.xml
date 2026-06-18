@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Monitor body -->
+    <path
+        android:fillColor="#0F3460"
+        android:pathData="M28,32h52v40H28z"
+        android:strokeWidth="2.5"
+        android:strokeColor="#FFFFFF" />
+    <!-- Screen -->
+    <path
+        android:fillColor="#E8F0FE"
+        android:pathData="M32,36h44v32H32z" />
+    <!-- Stand -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M48,72h12v4H48z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M42,76h24v2H42z" />
+    <!-- Play arrow -->
+    <path
+        android:fillColor="#0F3460"
+        android:pathData="M46,46l18,10l-18,10z" />
+</vector>

@@ -1,0 +1,15 @@
+.gradle/
+build/
+app/build/
+.idea/
+*.iml
+local.properties
+gradle-8.5/
+.cxx/
+*.apk
+*.aab
+.claude/
+crash_log.txt
+android-sdk/
+.gradle
+*.keystore

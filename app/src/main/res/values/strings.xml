@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">EasyKiosk</string>
+    <string name="setup_title">首次启动设置</string>
+    <string name="setup_password_label">设置6位管理员密码</string>
+    <string name="setup_password_confirm">再次输入密码确认</string>
+    <string name="setup_url_label">目标网页地址</string>
+    <string name="setup_url_hint">https://www.example.com</string>
+    <string name="setup_confirm_btn">确认启动</string>
+    <string name="setup_password_hint">输入6位数字</string>
+    <string name="setup_password_mismatch">两次密码输入不一致</string>
+    <string name="setup_password_too_short">密码必须为6位数字</string>
+    <string name="setup_responsibility">我已牢记密码，遗忘将无法恢复</string>
+    <string name="exit_title">管理员验证</string>
+    <string name="exit_password_hint">请输入管理员密码</string>
+    <string name="exit_confirm">确认退出</string>
+    <string name="exit_cancel">取消</string>
+    <string name="exit_wrong_password">密码错误</string>
+    <string name="network_error_title">网络连接失败</string>
+    <string name="network_error_retry">点击重试</string>
+    <string name="loading">正在加载…</string>
+    <string name="settings_title">设置</string>
+    <string name="settings_save">保存设置</string>
+    <string name="settings_saved">设置已保存</string>
+    <string name="settings_web_section">网页设置</string>
+    <string name="settings_security_section">安全设置</string>
+    <string name="settings_display_section">显示设置</string>
+    <string name="settings_root_section">Root权限设置</string>
+    <string name="settings_url_label">目标网页地址</string>
+    <string name="settings_password_hint">修改密码需要验证当前密码</string>
+    <string name="settings_current_password">当前密码</string>
+    <string name="settings_new_password">新密码 (6位数字)</string>
+    <string name="settings_new_password_confirm">确认新密码</string>
+    <string name="settings_orientation_label">屏幕方向</string>
+    <string name="settings_orientation_landscape">横屏</string>
+    <string name="settings_orientation_portrait">竖屏</string>
+    <string name="settings_orientation_sensor">自动</string>
+    <string name="settings_freeze_launcher">冻结系统启动器</string>
+    <string name="settings_freeze_launcher_desc">默认关闭：Root仅用于强制全屏。开启后还将冻结系统启动器以防止从桌面打开其他应用。</string>
+    <string name="settings_verify_title">管理员验证</string>
+    <string name="settings_verify_confirm">确认</string>
+    <string name="settings_password_wrong">当前密码错误</string>
+    <string name="settings_password_mismatch">两次密码输入不一致</string>
+    <string name="settings_password_too_short">密码必须为6位数字</string>
+    <string name="settings_password_updated">密码已更新</string>
+    <string name="settings_enter_current_password">请输入当前密码</string>
+</resources>
