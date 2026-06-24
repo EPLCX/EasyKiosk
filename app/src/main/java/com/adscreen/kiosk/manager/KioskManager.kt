@@ -26,10 +26,10 @@ class KioskManager(private val activity: Activity) {
      * Must be called in onWindowFocusChanged to re-apply on focus changes.
      */
     fun applyImmersiveFlags() {
-        activity.window.setFlags(
-            WindowManager.LayoutParams.FLAG_SECURE,
-            WindowManager.LayoutParams.FLAG_SECURE
-        )
+        // FLAG_SECURE is intentionally NOT applied here — on some Android 11
+        // devices it prevents WebView's SurfaceView from rendering (black
+        // screen). It is applied separately via enableSecureFlag() after the
+        // first page finishes loading.
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             // Modern API (Android 11+) — properly hides status + nav bars

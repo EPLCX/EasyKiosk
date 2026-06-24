@@ -1,7 +1,9 @@
 package com.adscreen.kiosk
 
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
+import android.net.Uri
 import android.os.Bundle
 import android.view.MotionEvent
 import android.view.WindowManager
@@ -37,6 +39,7 @@ class SettingsActivity : AppCompatActivity() {
         binding.btnBack.setOnClickListener { finish() }
         binding.btnSave.setOnClickListener { saveSettings() }
         binding.btnExitKiosk.setOnClickListener { showExitDialog() }
+        binding.btnUninstall.setOnClickListener { showUninstallDialog() }
     }
 
     private fun loadSettings() {
@@ -142,6 +145,48 @@ class SettingsActivity : AppCompatActivity() {
             window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
 
             // 4. Finish all activities in the task
+            finishAffinity()
+        }
+    }
+
+    private fun showUninstallDialog() {
+        val dialog = ExitDialogFragment()
+            .setTitle("卸载 Kiosk")
+            .setHint("请输入管理员密码确认")
+            .setConfirmButtonText("卸载")
+            .setOnExitConfirmed {
+                performUninstall()
+            }
+        dialog.show(supportFragmentManager, "UninstallKiosk")
+    }
+
+    private fun performUninstall() {
+        lifecycleScope.launch {
+            // 1. Exit lock task
+            try { stopLockTask() } catch (_: Exception) {}
+
+            // 2. 清除 device owner 和 device admin（不需要 root）
+            val dpm = getSystemService(DEVICE_POLICY_SERVICE) as android.app.admin.DevicePolicyManager
+            try { dpm.clearDeviceOwnerApp(packageName) } catch (_: Exception) {}
+            try {
+                val comp = android.content.ComponentName(
+                    this@SettingsActivity,
+                    com.adscreen.kiosk.manager.DeviceAdminReceiverImpl::class.java
+                )
+                dpm.removeActiveAdmin(comp)
+            } catch (_: Exception) {}
+
+            // 3. Clear secure flag
+            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+
+            // 4. Open system uninstall page
+            val intent = Intent(Intent.ACTION_DELETE).apply {
+                data = Uri.parse("package:$packageName")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(intent)
+
+            // 5. Finish settings
             finishAffinity()
         }
     }

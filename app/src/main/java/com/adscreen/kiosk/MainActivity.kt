@@ -45,6 +45,7 @@ class MainActivity : AppCompatActivity() {
     private var currentUrl: String = ""
     private var isExiting = false
     private var isLocking = false
+    private var secureFlagApplied = false
 
     companion object {
         private const val TAG = "MainActivity"
@@ -56,8 +57,11 @@ class MainActivity : AppCompatActivity() {
         // Reject callers that are not our own app, system, shell, or root.
         // This prevents third-party apps on the same device from launching
         // MainActivity to interfere with kiosk mode (e.g. break lock-task).
+        // Note: getLaunchedFromUid() is wrapped in try-catch because some
+        // custom Android 11 ROMs (Chinese vendor builds) removed this method
+        // from the Activity class, causing a crash on startup.
         val callerUid = android.os.Process.myUid()
-        val callingUid = getLaunchedFromUid()
+        val callingUid = try { getLaunchedFromUid() } catch (_: Error) { null }
         if (callingUid != null && callingUid != callerUid
             && callingUid != android.os.Process.ROOT_UID
             && callingUid != android.os.Process.SYSTEM_UID
@@ -81,6 +85,7 @@ class MainActivity : AppCompatActivity() {
 
         kioskManager.applyImmersiveFlags()
         currentUrl = cryptoUtil.getDecryptedUrl()
+        Log.d(TAG, "Target URL: $currentUrl")
 
         setupWebView()
         setupSettingsButton()
@@ -99,21 +104,23 @@ class MainActivity : AppCompatActivity() {
 
             // Start lock‑task with touch guard.
             lockWithOverlay()
-            startLockTask()
+            try {
+                startLockTask()
 
-            // Fallback: dismiss the pin‑confirmation dialog in case the
-            // whitelist didn't take (some custom ROMs ignore dpm).
-            delay(300)
-            // Blank the WebView so no input tap can hit page content
-            binding.webview.stopLoading()
-            binding.webview.loadUrl("about:blank")
-            delay(500)
-            val w = resources.displayMetrics.widthPixels
-            val h = resources.displayMetrics.heightPixels
-            rootManager.dismissPinningDialog(w, h)
-            binding.webview.loadUrl(currentUrl)
-
-            unlockWithOverlay()
+                // Fallback: dismiss the pin‑confirmation dialog in case the
+                // whitelist didn't take (some custom ROMs ignore dpm).
+                delay(300)
+                // Blank the WebView so no input tap can hit page content
+                binding.webview.stopLoading()
+                binding.webview.loadUrl("about:blank")
+                delay(500)
+                val w = resources.displayMetrics.widthPixels
+                val h = resources.displayMetrics.heightPixels
+                rootManager.dismissPinningDialog(w, h)
+                binding.webview.loadUrl(currentUrl)
+            } finally {
+                unlockWithOverlay()
+            }
         }
 
         // Periodic enforcement: every 2 s re-apply immersive flags,
@@ -200,16 +207,19 @@ class MainActivity : AppCompatActivity() {
         if (am.lockTaskModeState == ActivityManager.LOCK_TASK_MODE_NONE) {
             lifecycleScope.launch {
                 lockWithOverlay()
-                startLockTask()
-                delay(300)
-                binding.webview.stopLoading()
-                binding.webview.loadUrl("about:blank")
-                delay(500)
-                val w = resources.displayMetrics.widthPixels
-                val h = resources.displayMetrics.heightPixels
-                rootManager.dismissPinningDialog(w, h)
-                binding.webview.loadUrl(currentUrl)
-                unlockWithOverlay()
+                try {
+                    startLockTask()
+                    delay(300)
+                    binding.webview.stopLoading()
+                    binding.webview.loadUrl("about:blank")
+                    delay(500)
+                    val w = resources.displayMetrics.widthPixels
+                    val h = resources.displayMetrics.heightPixels
+                    rootManager.dismissPinningDialog(w, h)
+                    binding.webview.loadUrl(currentUrl)
+                } finally {
+                    unlockWithOverlay()
+                }
             }
         }
 
@@ -278,6 +288,13 @@ class MainActivity : AppCompatActivity() {
                 binding.progressBar.visibility = View.GONE
                 binding.networkErrorOverlay.visibility = View.GONE
                 Log.d(TAG, "Page loaded: $url")
+                // Apply FLAG_SECURE after the first successful page load.
+                // On some Android 11 devices, setting it before WebView
+                // initialization causes a black rendered surface.
+                if (!secureFlagApplied) {
+                    secureFlagApplied = true
+                    kioskManager.enableSecureFlag()
+                }
             }
 
             override fun onReceivedError(
@@ -290,6 +307,30 @@ class MainActivity : AppCompatActivity() {
                     binding.progressBar.visibility = View.GONE
                     binding.networkErrorOverlay.visibility = View.VISIBLE
                     Log.e(TAG, "WebView error: ${error?.description}")
+                }
+            }
+
+            override fun onReceivedSslError(
+                view: WebView?,
+                handler: android.webkit.SslErrorHandler?,
+                error: android.net.http.SslError?
+            ) {
+                Log.e(TAG, "SSL error: ${error?.toString()}")
+                binding.progressBar.visibility = View.GONE
+                binding.networkErrorOverlay.visibility = View.VISIBLE
+                // Do NOT call handler.proceed() — block insecure pages
+                handler?.cancel()
+            }
+
+            override fun onReceivedHttpError(
+                view: WebView?,
+                request: WebResourceRequest?,
+                errorResponse: android.webkit.WebResourceResponse?
+            ) {
+                if (request?.isForMainFrame == true) {
+                    Log.e(TAG, "HTTP error: ${errorResponse?.statusCode}")
+                    binding.progressBar.visibility = View.GONE
+                    binding.networkErrorOverlay.visibility = View.VISIBLE
                 }
             }
 

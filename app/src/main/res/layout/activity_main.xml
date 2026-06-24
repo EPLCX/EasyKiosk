@@ -7,8 +7,12 @@
 
     <WebView
         android:id="@+id/webview"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <ProgressBar
         android:id="@+id/progress_bar"
@@ -52,19 +56,19 @@
         </LinearLayout>
     </FrameLayout>
 
-    <!-- Settings button (top-right) -->
+    <!-- Settings button (bottom-left) -->
     <ImageButton
         android:id="@+id/btn_settings"
         android:layout_width="40dp"
         android:layout_height="40dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginEnd="8dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginBottom="12dp"
         android:alpha="0.3"
         android:background="@drawable/exit_button_bg"
         android:scaleType="center"
         android:src="@drawable/ic_settings"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
 
     <!-- Touch-blocking overlay for lock-task transitions -->
     <FrameLayout

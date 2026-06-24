@@ -1,6 +1,7 @@
 package com.adscreen.kiosk.manager
 
 import android.content.Context
+import android.os.Build
 import android.util.Log
 import com.adscreen.kiosk.util.Constants
 import com.topjohnwu.superuser.Shell
@@ -51,8 +52,15 @@ class RootManager(private val context: Context) {
 
     /**
      * Apply global immersive mode via system settings.
+     * Skipped on Android 11+ (API 30+) because policy_control breaks screen
+     * rendering on modern Android — the Activity-level WindowInsetsController
+     * approach in KioskManager is sufficient.
      */
     suspend fun forceImmersiveMode(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Log.i(TAG, "Skipping policy_control immersive on API ${Build.VERSION.SDK_INT}")
+            return true
+        }
         val result = execRoot(Constants.ROOT_CMD_HIDE_NAV_BAR)
         if (!result.isSuccess) {
             Log.e(TAG, "Failed to set global immersive: ${result.err}")
@@ -62,13 +70,15 @@ class RootManager(private val context: Context) {
 
     /**
      * Harden system UI to prevent status bar pull-down.
+     * On Android 11+ policy_control is skipped to avoid black screen.
      */
     suspend fun hardenSystemUi(): Boolean {
-        val cmds = listOf(
-            Constants.ROOT_CMD_HIDE_STATUS_BAR,
-            Constants.ROOT_CMD_CLEAR_QS_TILES,
-            Constants.ROOT_CMD_DISABLE_HEADS_UP
-        )
+        val cmds = mutableListOf<String>()
+        // policy_control breaks rendering on API 30+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            cmds.add(Constants.ROOT_CMD_HIDE_STATUS_BAR)
+        }
+        cmds.add(Constants.ROOT_CMD_DISABLE_HEADS_UP)
         var allOk = true
         for (cmd in cmds) {
             val result = execRoot(cmd)
@@ -274,8 +284,16 @@ class RootManager(private val context: Context) {
         // Always restore launchers first (clean up from previous crash) — needs root
         if (hasRoot) enableLaunchers()
 
+        // CRITICAL: Clean up any stale policy_control that may have been left by a
+        // previous run (or a previous app version). This setting persists across
+        // reboots and on Android 11+ it causes a black screen / SystemUI crash.
+        if (hasRoot && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            restoreNavigationBar()
+        }
+
         // Fullscreen mode — policy_control requires root
         if (hasRoot) {
+            grantOverlayPermission()
             forceImmersiveMode()
             hardenSystemUi()
             raiseProcessPriority()

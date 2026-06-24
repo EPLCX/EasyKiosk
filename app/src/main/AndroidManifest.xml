@@ -32,6 +32,7 @@
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="false"
+        android:hardwareAccelerated="true"
         android:icon="@drawable/ic_launcher_foreground"
         android:label="@string/app_name"
         android:supportsRtl="true"
@@ -58,7 +59,14 @@
             android:excludeFromRecents="true"
             android:showForAllUsers="true"
             android:taskAffinity=""
-            android:theme="@style/Theme.KioskApp.Fullscreen" />
+            android:theme="@style/Theme.KioskApp.Fullscreen">
+            <!-- 注册为系统桌面（启动器），开机或按 Home 键时弹出选择提示 -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
 
         <activity
             android:name=".SettingsActivity"

@@ -284,5 +284,29 @@
             android:textColor="@color/error"
             android:textSize="14sp" />
 
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginVertical="24dp"
+            android:background="@color/exit_button_bg" />
+
+        <!-- ===== 卸载 Kiosk Section ===== -->
+        <TextView
+            style="@style/TextAppearance.Material3.TitleSmall"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="卸载"
+            android:textColor="@color/error" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_uninstall"
+            style="@style/Widget.Material3.Button"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="卸载 Kiosk 广告机"
+            android:textSize="14sp"
+            app:backgroundTint="@color/error" />
+
     </LinearLayout>
 </ScrollView>

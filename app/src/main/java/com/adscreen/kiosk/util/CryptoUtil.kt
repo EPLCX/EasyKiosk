@@ -28,6 +28,7 @@ class CryptoUtil(context: Context) {
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
         private const val KEY_PASSWORD = "encrypted_password"
         private const val KEY_URL = "encrypted_url"
+        private const val KEY_URL_FALLBACK = "url_fallback"
         private const val KEY_IS_FIRST_RUN = "is_first_run"
         private const val GCM_TAG_LENGTH = 128 // bits
     }
@@ -114,18 +115,30 @@ class CryptoUtil(context: Context) {
     }
 
     fun saveUrl(url: String) {
+        // Always save a plaintext fallback in case keystore decryption fails later
+        prefs.edit().putString(KEY_URL_FALLBACK, url).apply()
         val encrypted = encrypt(url)
         prefs.edit().putString(KEY_URL, encrypted ?: url).apply()
     }
 
     fun getDecryptedUrl(): String {
-        val stored = prefs.getString(KEY_URL, null) ?: return Constants.DEFAULT_URL
-        // If it starts with "http", it's already a plaintext URL
+        val stored = prefs.getString(KEY_URL, null)
+        if (stored == null) {
+            // No encrypted entry yet — try plaintext fallback or default
+            return prefs.getString(KEY_URL_FALLBACK, null) ?: Constants.DEFAULT_URL
+        }
+        // If it starts with "http", it's already a plaintext URL (encryption unavailable)
         if (stored.startsWith("http://") || stored.startsWith("https://")) {
             return stored
         }
         // Otherwise it's encrypted (Base64) — decrypt it
-        return decrypt(stored) ?: stored.ifBlank { Constants.DEFAULT_URL }
+        val decrypted = decrypt(stored)
+        if (decrypted != null && (decrypted.startsWith("http://") || decrypted.startsWith("https://"))) {
+            return decrypted
+        }
+        // Decryption failed or returned invalid data — use fallback
+        android.util.Log.w("CryptoUtil", "URL decryption failed, using fallback")
+        return prefs.getString(KEY_URL_FALLBACK, null) ?: Constants.DEFAULT_URL
     }
 
     fun verifyPassword(input: String): Boolean {

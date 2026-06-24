@@ -1,0 +1,106 @@
+Android Resource Language Codes
+================================
+
+目录命名格式: values-<code>/
+资源文件:       strings.xml
+兜底语言:       values/ （默认英语，任何未匹配的语言自动回退到此目录）
+
+常用语言代码对照:
+
+  code  |  Language         |  语言
+  ------|-------------------|--------
+  af    |  Afrikaans        |  南非荷兰语
+  am    |  Amharic          |  阿姆哈拉语
+  ar    |  Arabic           |  阿拉伯语
+  as    |  Assamese         |  阿萨姆语
+  az    |  Azerbaijani      |  阿塞拜疆语
+  be    |  Belarusian       |  白俄罗斯语
+  bg    |  Bulgarian        |  保加利亚语
+  bn    |  Bengali          |  孟加拉语
+  bs    |  Bosnian          |  波斯尼亚语
+  ca    |  Catalan          |  加泰罗尼亚语
+  cs    |  Czech            |  捷克语
+  da    |  Danish           |  丹麦语
+  de    |  German           |  德语
+  el    |  Greek            |  希腊语
+  en    |  English          |  英语 (默认兜底)
+  es    |  Spanish          |  西班牙语
+  et    |  Estonian         |  爱沙尼亚语
+  eu    |  Basque           |  巴斯克语
+  fa    |  Persian          |  波斯语
+  fi    |  Finnish          |  芬兰语
+  fil   |  Filipino         |  菲律宾语
+  fr    |  French           |  法语
+  ga    |  Irish            |  爱尔兰语
+  gl    |  Galician         |  加利西亚语
+  gu    |  Gujarati         |  古吉拉特语
+  he    |  Hebrew           |  希伯来语
+  hi    |  Hindi            |  印地语
+  hr    |  Croatian         |  克罗地亚语
+  hu    |  Hungarian        |  匈牙利语
+  hy    |  Armenian         |  亚美尼亚语
+  id    |  Indonesian       |  印度尼西亚语
+  is    |  Icelandic        |  冰岛语
+  it    |  Italian          |  意大利语
+  ja    |  Japanese         |  日语
+  ka    |  Georgian         |  格鲁吉亚语
+  kk    |  Kazakh           |  哈萨克语
+  km    |  Khmer            |  高棉语
+  kn    |  Kannada          |  卡纳达语
+  ko    |  Korean           |  韩语
+  ky    |  Kyrgyz           |  柯尔克孜语
+  lo    |  Lao              |  老挝语
+  lt    |  Lithuanian       |  立陶宛语
+  lv    |  Latvian          |  拉脱维亚语
+  mk    |  Macedonian       |  马其顿语
+  ml    |  Malayalam        |  马拉雅拉姆语
+  mn    |  Mongolian        |  蒙古语
+  mr    |  Marathi          |  马拉地语
+  ms    |  Malay            |  马来语
+  my    |  Myanmar          |  缅甸语
+  nb    |  Norwegian Bokmål |  挪威语
+  ne    |  Nepali           |  尼泊尔语
+  nl    |  Dutch            |  荷兰语
+  or    |  Odia             |  奥里亚语
+  pa    |  Punjabi          |  旁遮普语
+  pl    |  Polish           |  波兰语
+  pt    |  Portuguese       |  葡萄牙语
+  ro    |  Romanian         |  罗马尼亚语
+  ru    |  Russian          |  俄语
+  si    |  Sinhala          |  僧伽罗语
+  sk    |  Slovak           |  斯洛伐克语
+  sl    |  Slovenian        |  斯洛文尼亚语
+  sq    |  Albanian         |  阿尔巴尼亚语
+  sr    |  Serbian          |  塞尔维亚语
+  sv    |  Swedish          |  瑞典语
+  sw    |  Swahili          |  斯瓦希里语
+  ta    |  Tamil            |  泰米尔语
+  te    |  Telugu           |  泰卢固语
+  th    |  Thai             |  泰语
+  tr    |  Turkish          |  土耳其语
+  uk    |  Ukrainian        |  乌克兰语
+  ur    |  Urdu             |  乌尔都语
+  uz    |  Uzbek            |  乌兹别克语
+  vi    |  Vietnamese       |  越南语
+  zh    |  Chinese          |  中文（简体）
+
+地区变体代码 (使用 r 分隔):
+
+  code        |  Description
+  ------------|----------------------------------------
+  zh-rCN      |  简体中文 - 中国
+  zh-rTW      |  繁体中文 - 台湾
+  zh-rHK      |  繁体中文 - 香港
+  pt-rBR      |  葡萄牙语 - 巴西
+  pt-rPT      |  葡萄牙语 - 葡萄牙
+  en-rGB      |  英语 - 英国
+  en-rAU      |  英语 - 澳大利亚
+  es-rUS      |  西班牙语 - 美国
+  fr-rCA      |  法语 - 加拿大
+
+说明:
+  - Android 优先匹配最具体的代码 (如 values-zh-rCN),
+    再回退到通用代码 (values-zh), 最后兜底 values/
+  - 只需把对应语言的 strings.xml 放到对应目录,
+    放入与 values/strings.xml 相同 key 的翻译即可,
+    无需修改任何代码

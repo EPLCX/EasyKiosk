@@ -12,8 +12,11 @@ import shutil
 
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 GRADLE = os.path.join(PROJECT_DIR, "gradle-8.5", "bin", "gradle")
-APK_DEBUG = os.path.join(PROJECT_DIR, "app", "build", "outputs", "apk", "debug", "app-debug.apk")
-APK_RELEASE = os.path.join(PROJECT_DIR, "app", "build", "outputs", "apk", "release", "app-release.apk")
+APK_DEBUG_DIR = os.path.join(PROJECT_DIR, "app", "build", "outputs", "apk", "debug")
+APK_RELEASE_DIR = os.path.join(PROJECT_DIR, "app", "build", "outputs", "apk", "release")
+# ABI 拆分已开启 (arm64-v8a, armeabi-v7a)，没有 universal APK
+APK_DEBUG = os.path.join(APK_DEBUG_DIR, "app-arm64-v8a-debug.apk")
+APK_RELEASE = os.path.join(APK_RELEASE_DIR, "app-arm64-v8a-release.apk")
 
 
 def print_header(title):
@@ -31,11 +34,25 @@ def run_gradle(*tasks):
     return result.returncode == 0
 
 
+def find_apk(directory, abi="arm64-v8a"):
+    """查找 APK 文件，优先匹配指定 ABI"""
+    if not os.path.isdir(directory):
+        return None
+    for f in os.listdir(directory):
+        if f.endswith(".apk") and abi in f:
+            return os.path.join(directory, f)
+    for f in os.listdir(directory):
+        if f.endswith(".apk"):
+            return os.path.join(directory, f)
+    return None
+
+
 def build_debug():
     print_header("编译 Debug 版本")
     if run_gradle("assembleDebug"):
+        apk = find_apk(APK_DEBUG_DIR)
         print(f"\n  [OK] Debug 编译成功！")
-        print(f"  APK: {APK_DEBUG}")
+        print(f"  APK: {apk or '未找到 APK'}")
     else:
         print(f"\n  [!!] 编译失败，请检查错误信息")
     input("\n  按回车键返回菜单...")
@@ -44,8 +61,9 @@ def build_debug():
 def build_release():
     print_header("编译 Release 版本")
     if run_gradle("assembleRelease"):
+        apk = find_apk(APK_RELEASE_DIR)
         print(f"\n  [OK] Release 编译成功！")
-        print(f"  APK: {APK_RELEASE}")
+        print(f"  APK: {apk or '未找到 APK'}")
     else:
         print(f"\n  [!!] 编译失败，请检查错误信息")
     input("\n  按回车键返回菜单...")
@@ -54,8 +72,9 @@ def build_release():
 def clean_build_debug():
     print_header("清理并编译 Debug 版本")
     if run_gradle("clean", "assembleDebug"):
+        apk = find_apk(APK_DEBUG_DIR)
         print(f"\n  [OK] 清理编译成功！")
-        print(f"  APK: {APK_DEBUG}")
+        print(f"  APK: {apk or '未找到 APK'}")
     else:
         print(f"\n  [!!] 编译失败，请检查错误信息")
     input("\n  按回车键返回菜单...")
@@ -64,8 +83,9 @@ def clean_build_debug():
 def clean_build_release():
     print_header("清理并编译 Release 版本")
     if run_gradle("clean", "assembleRelease"):
+        apk = find_apk(APK_RELEASE_DIR)
         print(f"\n  [OK] 清理编译成功！")
-        print(f"  APK: {APK_RELEASE}")
+        print(f"  APK: {apk or '未找到 APK'}")
     else:
         print(f"\n  [!!] 编译失败，请检查错误信息")
     input("\n  按回车键返回菜单...")
@@ -73,20 +93,24 @@ def clean_build_release():
 
 def show_output():
     print_header("编译输出路径")
-    print(f"  Debug APK:")
-    print(f"    {APK_DEBUG}")
+    print(f"  Debug APK 目录:")
+    print(f"    {APK_DEBUG_DIR}")
     print()
-    print(f"  Release APK:")
-    print(f"    {APK_RELEASE}")
+    print(f"  Release APK 目录:")
+    print(f"    {APK_RELEASE_DIR}")
     print()
-    print(f"  检查文件是否存在...")
+    print(f"  检查 APK 文件...")
     print()
-    if os.path.isfile(APK_DEBUG):
-        print(f"  [OK] Debug APK 已存在")
+    debug_apk = find_apk(APK_DEBUG_DIR)
+    release_apk = find_apk(APK_RELEASE_DIR)
+    if debug_apk:
+        size = os.path.getsize(debug_apk) // 1024
+        print(f"  [OK] Debug APK: {os.path.basename(debug_apk)} ({size} KB)")
     else:
         print(f"  [..] Debug APK 未编译")
-    if os.path.isfile(APK_RELEASE):
-        print(f"  [OK] Release APK 已存在")
+    if release_apk:
+        size = os.path.getsize(release_apk) // 1024
+        print(f"  [OK] Release APK: {os.path.basename(release_apk)} ({size} KB)")
     else:
         print(f"  [..] Release APK 未编译")
     input("\n  按回车键返回菜单...")
@@ -97,9 +121,10 @@ def install_apk():
     print(f"  搜索已连接的设备...\n")
     subprocess.run(["adb", "devices"])
     print()
-    if os.path.isfile(APK_DEBUG):
-        print(f"  安装 Debug APK...")
-        result = subprocess.run(["adb", "install", "-r", APK_DEBUG])
+    apk = find_apk(APK_DEBUG_DIR)
+    if apk:
+        print(f"  安装 {os.path.basename(apk)} ...")
+        result = subprocess.run(["adb", "install", "-r", apk])
         if result.returncode == 0:
             print(f"\n  [OK] 安装成功")
         else:
