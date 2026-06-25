@@ -1,3 +1,5 @@
+> ⚠️ **升级须知**：本版本更换了签名证书，升级前必须先**卸载旧版本**，否则安装将失败。卸载前请备份设备配置（URL 等设置将被清除）。
+
 ## v1.2.1
 
 ### 修复
@@ -7,11 +9,6 @@
 - **修复 WebView 布局约束** — ConstraintLayout 中 WebView 缺少完整约束可能导致尺寸为 0
 - **添加 SSL/HTTP 错误回调** — 缺失的 `onReceivedSslError` 和 `onReceivedHttpError` 导致错误时页面空白
 - **修复构建脚本 APK 路径** — `build.py` 硬编码 `app-debug.apk`，但 ABI 拆分后实际文件名不同，安装的可能是旧版 APK
-
-### 新增
-- **注册为系统桌面（启动器）** — 按 Home 键弹出选择提示，选中后开机自动进入 Kiosk 模式（不需要 root）
-- **设置页新增卸载按钮** — 自动调用 `clearDeviceOwnerApp()` 清除设备所有者身份，然后打开系统卸载页面（不需要 root）
-- **设置按钮移至左下角** — 避免遮挡页面内容
 
 ### 其他
 - 移除冗余的 WebView stop/blank 流程

@@ -13,4 +13,5 @@ crash_log.txt
 android-sdk/
 .gradle
 *.keystore
+keystore.properties
 CLAUDE.md 
